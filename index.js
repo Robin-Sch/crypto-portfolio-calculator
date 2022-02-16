@@ -35,29 +35,49 @@ const calculateInterestedCoinPrices = async (fiat) => {
 const calculatePortfolio = async (fiat) => {
   const prices = await fetchPrice(['bitcoin', 'ethereum', 'binancecoin', 'monero'], fiat);
 
+  let total = 0;
+
   if (BTC_WALLETS.length > 0) {
     const btc = await calculateTotalBTC(fiat, BTC_WALLETS);
     const btc_price = prices.bitcoin[fiat];
-    console.log(`You have ${btc} BTC (${(btc * btc_price).toFixed(2)} ${fiat})`);
+
+    const btc_fiat = btc * btc_price
+    total += btc_fiat;
+
+    console.log(`You have ${btc} BTC (${btc_fiat.toFixed(2)} ${fiat})`);
   }
   
   if (ETH_WALLETS.length > 0) {
     const eth = await calculateTotalETH(fiat, ETH_WALLETS);
     const eth_price = prices.ethereum[fiat];
-    console.log(`You have ${eth} ETH (${(eth * eth_price).toFixed(2)} ${fiat})`);
+
+    const eth_fiat = eth * eth_price;
+    total += eth_fiat;
+
+    console.log(`You have ${eth} ETH (${eth_fiat.toFixed(2)} ${fiat})`);
   }
 
   if (BNB_WALLETS.length > 0) {
     const bnb = await calculateTotalBNB(fiat, BNB_WALLETS);
     const bnb_price = prices.binancecoin[fiat];
-    console.log(`You have ${bnb} BNB (${(bnb * bnb_price).toFixed(2)} ${fiat})`);
+
+    const bnb_fiat = bnb * bnb_price;
+    total += bnb_fiat;
+
+    console.log(`You have ${bnb} BNB (${bnb_fiat.toFixed(2)} ${fiat})`);
   }
 
   if (MONEROOCEAN_WALLETS.length > 0) {
     const xmr = await calculateTotalMoneroocean(fiat, MONEROOCEAN_WALLETS);
     const xmr_price = prices.monero[fiat];
-    console.log(`You have mined ${xmr} XMR (${(xmr * xmr_price).toFixed(2)} ${fiat})`);
+
+    const xmr_fiat = xmr * xmr_price;
+    total += xmr_fiat;
+
+    console.log(`You have mined ${xmr} XMR (${xmr_fiat.toFixed(2)} ${fiat})`);
   }
+
+  console.log(`In total, you have: ${total.toFixed(2)} ${fiat}`);
 }
 
 (async () => {
