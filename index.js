@@ -8,10 +8,12 @@ const ETH_WALLETS = JSON.parse(process.env.ETH_WALLETS) || [];
 const BNB_WALLETS = JSON.parse(process.env.BNB_WALLETS) || [];
 const INTERESTING_COINS = JSON.parse(process.env.INTERESTING_COINS) || [];
 const FIAT = process.env.FIAT || 'usd';
+const MONEROOCEAN_WALLETS = JSON.parse(process.env.MONEROOCEAN_WALLETS) || [];
 
 const { calculateTotalBTC } = require('./currencies/btc.js');
 const { calculateTotalETH } = require('./currencies/eth.js');
 const { calculateTotalBNB } = require('./currencies/bnb.js');
+const { calculateTotalMoneroocean } = require('./extra/moneroocean.js');
 
 const fetchPrice = (async (id, fiat) => {
   const price_data = await fetch(`${CG_API}/simple/price?ids=${id}&vs_currencies=${fiat}`);
@@ -31,7 +33,7 @@ const calculateInterestedCoinPrices = async (fiat) => {
 }
 
 const calculatePortfolio = async (fiat) => {
-  const prices = await fetchPrice(['bitcoin', 'ethereum', 'binancecoin'], fiat);
+  const prices = await fetchPrice(['bitcoin', 'ethereum', 'binancecoin', 'monero'], fiat);
 
   if (BTC_WALLETS.length > 0) {
     const btc = await calculateTotalBTC(fiat, BTC_WALLETS);
@@ -49,6 +51,12 @@ const calculatePortfolio = async (fiat) => {
     const bnb = await calculateTotalBNB(fiat, BNB_WALLETS);
     const bnb_price = prices.binancecoin[fiat];
     console.log(`You have ${bnb} BNB (${(bnb * bnb_price).toFixed(2)} ${fiat})`);
+  }
+
+  if (MONEROOCEAN_WALLETS.length > 0) {
+    const xmr = await calculateTotalMoneroocean(fiat, MONEROOCEAN_WALLETS);
+    const xmr_price = prices.monero[fiat];
+    console.log(`You have mined ${xmr} XMR (${(xmr * xmr_price).toFixed(2)} ${fiat})`);
   }
 }
 

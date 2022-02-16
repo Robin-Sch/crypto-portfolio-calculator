@@ -20,6 +20,8 @@ Change `FIAT` to something like `usd`, `eur`, `gbp` etc. to change the currency.
 
 You can leave out `ETH_API_KEY` and `BNB_API_KEY`. If you hit rate limits, use [etherscan](https://etherscan.io/) and [bscscan](https://bscscan.com/) to get the key(s).
 
+If you're mining on [moneroocean](https://moneroocean.stream/), you can fill in `MONEROOCEAN_WALLETS` and it will automatically calculate the total amount you've mined.
+
 Run `npm i` to install the dependencies.
 
 ## Usage
