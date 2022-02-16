@@ -1,0 +1,15 @@
+{
+  "name": "crypto-portfolio-calculator",
+  "version": "1.0.0",
+  "description": "A simple script which will calculate the total worth of all my cryptocurrencies accross different wallets",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "robin@robinsch.net",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "node-fetch": "^2.6.7"
+  }
+}
