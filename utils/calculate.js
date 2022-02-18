@@ -3,7 +3,7 @@ const CG_API = 'https://api.coingecko.com/api/v3';
 
 const db = require('./database.js');
 const { MONEROOCEAN_WALLETS, INTERESTING_COINS } = require('./wallets.js');
-const { calculateTotalBTC, calculateTotalETH, calculateTotalBNB, calculateTotalMoneroocean } = require('../currencies/all.js');
+const { calculateTotalBTC, calculateTotalETH, calculateTotalBNB, calculateTotalXMR, calculateTotalMoneroocean } = require('../currencies/all.js');
 
 const fetchPrice = (async (id, fiat) => {
     const price_data = await fetch(`${CG_API}/simple/price?ids=${id}&vs_currencies=${fiat}`);
@@ -52,6 +52,16 @@ const calculatePortfolio = async (fiat) => {
         const bnb_fiat = bnb * bnb_price;
 
         result.push({ coin: 'bnb', amount: bnb, amount_fiat: bnb_fiat });
+    }
+
+    const XMR_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['xmr']).map(w => w.wallet);
+    if (XMR_WALLETS.length > 0) {
+    	const xmr = await calculateTotalXMR(fiat, XMR_WALLETS);
+    	const xmr_price = prices.monero[fiat];
+    	
+    	const xmr_fiat = xmr * xmr_price;
+    	
+    	result.push({ coin: 'xmr', amount: xmr, amount_fiat: xmr_fiat });
     }
 
     const MONEROOCEAN_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['xmr_mo']).map(w => w.wallet);

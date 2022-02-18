@@ -5,12 +5,13 @@ const FIAT = process.env.FIAT || 'usd';
 const COINS = [{ title: 'Bitcoin', value: 'btc' },
     { title: 'Ethereum', value: 'eth' },
     { title: 'Binance Coin', value: 'bnb' },
+    { title: 'Monero', value: 'xmr'},
     { title: 'Moneroocean', value: 'xmr_mo' }];
 
 const { calculateTotalMoneroocean } = require('./extra/moneroocean.js');
 const { calculateInterestedCoinPrices, calculatePortfolio } = require('./utils/calculate.js');
 const db = require('./utils/database.js');
-const { INTERESTING_COINS, addAllWalletsToDatabase, addWalletToDatabase, removeWalletFromDatabase } = require('./utils/wallets.js');
+const { INTERESTING_COINS, addWalletToDatabase, removeWalletFromDatabase } = require('./utils/wallets.js');
 
 const main = async (output) => {
     if (output) console.log('\n' + output + '\n');
@@ -63,18 +64,42 @@ const main = async (output) => {
             }
         }
     } else if (response.choice === 'addWalletToDatabase') {
-        const response2 = await prompts([{
+        const response2 = await prompts({
             type: 'select',
             name: 'coin',
             message: 'For which coin is the wallet?',
             choices: COINS,
-        },{
+        });
+
+        const coin = response2.coin;
+
+        const response3 = await prompts({
             type: 'text',
             name: 'wallet',
-            message: 'What is the wallet address?'
-        }]);
+            message: 'What is the public wallet address?'
+        });
 
-        await addWalletToDatabase(response2.wallet, response2.coin);
+        const wallet = response3.wallet;
+        let amount = null;
+
+        if (coin === 'xmr') {
+            const old = db.prepare('SELECT amount FROM xmr WHERE wallet = ?').get([wallet]);
+
+            const response4 = await prompts({
+                type: 'number',
+                name: 'amount',
+                message: `What is the amount of Monero in this wallet? (previously: ${old || 0})`,
+                float: true
+            });
+
+            amount = response4.amount;
+            if (amount === '' || !amount) return main('Invalid amount, please try again!');
+        }
+
+
+        await addWalletToDatabase(wallet, coin);
+        if (coin === 'xmr' && amount) db.prepare('INSERT INTO xmr (wallet, amount) VALUES (?,?)').run([wallet, amount]);
+
         return main('Wallet has been added!');
     } else if (response.choice === 'removeWalletFromDatabase') {
         const existingCoins = db.prepare('SELECT DISTINCT coin AS value FROM wallets').all();
@@ -93,20 +118,33 @@ const main = async (output) => {
 
         const coin = response2.coin;
         const wallets = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all([coin]).map(w => w.wallet);
+        const choices = [].concat(wallets);
+
+        if (coin == 'xmr') {
+            const rows = db.prepare(`SELECT wallet, amount FROM xmr WHERE wallet IN (${wallets.map(() => '?').join(',')})`).all(wallets);
+
+            choices.forEach((wallet, index, arr) => {
+                const amount = rows.find(row => row.wallet === wallet).amount;
+                if (amount) arr[index] = `${wallet} (${amount})`;
+            });
+        }
+
+        choices.forEach((choice, index, arr) => {
+            arr[index] = { title: choice, value: wallets[index] }
+        });
 
         const response3 = await prompts({
             type: 'multiselect',
             name: 'wallets',
             message: 'What are the wallet(s)?',
-            choices: wallets,
+            choices,
         });
         
         const walletsToDelete = response3.wallets;
-        if (walletsToDelete.length === 0) return main('You didn\'t select any wallet');
+        if (!walletsToDelete || walletsToDelete.length === 0) return main('You didn\'t select any wallet');
 
         for(let i = 0; i < walletsToDelete.length; i++) {
-            const indexToDelete = response3.wallets[i];
-            await removeWalletFromDatabase(wallets[indexToDelete], coin);
+            await removeWalletFromDatabase(response3.wallets[i], coin);
 
             if(i === walletsToDelete.length - 1) {
                 return main('Wallet(s) have been removed!');

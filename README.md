@@ -24,7 +24,7 @@ Run `npm i` to install the dependencies.
 
 Run `npm start` to start.
 
-After starting for the first time, you need to add your Bitcoin, Ethereum of Binance coin wallet(s). Moneroocean wallets are Monero wallets which are mining on [moneroocean](https://moneroocean.stream/).
+When running for the first time, you need to add your Bitcoin, Ethereum, Binance coin and/or Monero wallet(s). Moneroocean wallets are Monero wallets which are mining on [moneroocean.stream](https://moneroocean.stream/).
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
