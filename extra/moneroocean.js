@@ -13,9 +13,7 @@ const calculateTotalMoneroocean = (async (fiat, wallets) => {
 
     total += amount;
 
-    if (i == wallets.length - 1) {
-        return total;
-    }
+    if (i == wallets.length - 1) return total;
   }
 });
 

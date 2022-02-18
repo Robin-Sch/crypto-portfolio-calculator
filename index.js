@@ -1,86 +1,122 @@
 require('dotenv').config();
-const fetch = require('node-fetch');
+const prompts = require('prompts');
 
-const CG_API = 'https://api.coingecko.com/api/v3';
-
-const BTC_WALLETS = JSON.parse(process.env.BTC_WALLETS) || [];
-const ETH_WALLETS = JSON.parse(process.env.ETH_WALLETS) || [];
-const BNB_WALLETS = JSON.parse(process.env.BNB_WALLETS) || [];
-const INTERESTING_COINS = JSON.parse(process.env.INTERESTING_COINS) || [];
 const FIAT = process.env.FIAT || 'usd';
-const MONEROOCEAN_WALLETS = JSON.parse(process.env.MONEROOCEAN_WALLETS) || [];
+const COINS = [{ title: 'Bitcoin', value: 'btc' },
+    { title: 'Ethereum', value: 'eth' },
+    { title: 'Binance Coin', value: 'bnb' },
+    { title: 'Moneroocean', value: 'xmr_mo' }];
 
-const { calculateTotalBTC } = require('./currencies/btc.js');
-const { calculateTotalETH } = require('./currencies/eth.js');
-const { calculateTotalBNB } = require('./currencies/bnb.js');
 const { calculateTotalMoneroocean } = require('./extra/moneroocean.js');
+const { calculateInterestedCoinPrices, calculatePortfolio } = require('./utils/calculate.js');
+const db = require('./utils/database.js');
+const { INTERESTING_COINS, addAllWalletsToDatabase, addWalletToDatabase, removeWalletFromDatabase } = require('./utils/wallets.js');
 
-const fetchPrice = (async (id, fiat) => {
-  const price_data = await fetch(`${CG_API}/simple/price?ids=${id}&vs_currencies=${fiat}`);
-  const price_json = await price_data.json();
-  return price_json;
-});
+const main = async (output) => {
+    if (output) console.log('\n' + output + '\n');
 
-const calculateInterestedCoinPrices = async (fiat) => {
-  if (INTERESTING_COINS.length > 0) {
-    const prices = await fetchPrice(INTERESTING_COINS, fiat);
-  
-    for (let i = 0; i < INTERESTING_COINS.length; i++) {
-      const name = INTERESTING_COINS[i];
-      console.log(`Current price of ${name}: ${prices[name][fiat]} ${fiat}`);
-    };
-  }
+    const response = await prompts({
+        type: 'select',
+        name: 'choice',
+        message: 'What do you want to do?',
+        choices: [
+            { title: 'Calculate my portfolio', value: 'calculatePortfolio' },
+            { title: 'View interested coin prices', value: 'calculateInterestedCoinPrices' },
+            { title: 'Add a new wallet', value: 'addWalletToDatabase' },
+            { title: 'Remove a wallet', value: 'removeWalletFromDatabase' },
+            { title: 'Exit', value: 'exit' }
+        ],
+    });
+
+    if (response.choice === 'calculatePortfolio') {
+        const res = await calculatePortfolio(FIAT);
+        if (res.length === 0) return main('You don\'t have added your wallet(s) yet');
+
+        let total_fiat = 0;
+        let msg = '';
+
+        for(let i = 0; i < res.length; i++) {
+            const current = res[i];
+            const { amount, coin, extra, amount_fiat } = current;
+
+            total_fiat += current.amount_fiat;
+
+            msg += `You have ${extra ? extra + ' ' : ''}${amount} ${coin} (${amount_fiat.toFixed(2)} ${FIAT})\n`;
+
+            if (i === res.length - 1) {
+                msg += `You have ${total_fiat.toFixed(2)} ${FIAT} in total\n`;
+                return main(msg)
+            }
+        }
+    } else if (response.choice === 'calculateInterestedCoinPrices') {
+        const prices = await calculateInterestedCoinPrices(FIAT);
+
+        let msg = '';
+
+        for (let i = 0; i < INTERESTING_COINS.length; i++) {
+            const name = INTERESTING_COINS[i];
+
+            msg += `Current price of ${name}: ${prices[name][FIAT]} ${FIAT}\n`;
+
+            if (i === INTERESTING_COINS.length - 1) {
+                return main(msg);
+            }
+        }
+    } else if (response.choice === 'addWalletToDatabase') {
+        const response2 = await prompts([{
+            type: 'select',
+            name: 'coin',
+            message: 'For which coin is the wallet?',
+            choices: COINS,
+        },{
+            type: 'text',
+            name: 'wallet',
+            message: 'What is the wallet address?'
+        }]);
+
+        await addWalletToDatabase(response2.wallet, response2.coin);
+        return main('Wallet has been added!');
+    } else if (response.choice === 'removeWalletFromDatabase') {
+        const existingCoins = db.prepare('SELECT DISTINCT coin AS value FROM wallets').all();
+        existingCoins.map(coin => {
+            coin.title = COINS.find(c => c.value === coin.value)?.title;
+        });
+
+        if (existingCoins.length === 0) return main('You don\'t have any wallet yet');
+
+        const response2 = await prompts({
+            type: 'select',
+            name: 'coin',
+            message: 'For which coin is the wallet?',
+            choices: existingCoins,
+        });
+
+        const coin = response2.coin;
+        const wallets = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all([coin]).map(w => w.wallet);
+
+        const response3 = await prompts({
+            type: 'multiselect',
+            name: 'wallets',
+            message: 'What are the wallet(s)?',
+            choices: wallets,
+        });
+        
+        const walletsToDelete = response3.wallets;
+        if (walletsToDelete.length === 0) return main('You didn\'t select any wallet');
+
+        for(let i = 0; i < walletsToDelete.length; i++) {
+            const indexToDelete = response3.wallets[i];
+            await removeWalletFromDatabase(wallets[indexToDelete], coin);
+
+            if(i === walletsToDelete.length - 1) {
+                return main('Wallet(s) have been removed!');
+            }
+        }
+    } else if (response.choice === 'exit') {
+        return process.exit();
+    } else {
+        return main('You selectd an invalid option!');
+    }
 }
 
-const calculatePortfolio = async (fiat) => {
-  const prices = await fetchPrice(['bitcoin', 'ethereum', 'binancecoin', 'monero'], fiat);
-
-  let total = 0;
-
-  if (BTC_WALLETS.length > 0) {
-    const btc = await calculateTotalBTC(fiat, BTC_WALLETS);
-    const btc_price = prices.bitcoin[fiat];
-
-    const btc_fiat = btc * btc_price
-    total += btc_fiat;
-
-    console.log(`You have ${btc} BTC (${btc_fiat.toFixed(2)} ${fiat})`);
-  }
-  
-  if (ETH_WALLETS.length > 0) {
-    const eth = await calculateTotalETH(fiat, ETH_WALLETS);
-    const eth_price = prices.ethereum[fiat];
-
-    const eth_fiat = eth * eth_price;
-    total += eth_fiat;
-
-    console.log(`You have ${eth} ETH (${eth_fiat.toFixed(2)} ${fiat})`);
-  }
-
-  if (BNB_WALLETS.length > 0) {
-    const bnb = await calculateTotalBNB(fiat, BNB_WALLETS);
-    const bnb_price = prices.binancecoin[fiat];
-
-    const bnb_fiat = bnb * bnb_price;
-    total += bnb_fiat;
-
-    console.log(`You have ${bnb} BNB (${bnb_fiat.toFixed(2)} ${fiat})`);
-  }
-
-  if (MONEROOCEAN_WALLETS.length > 0) {
-    const xmr = await calculateTotalMoneroocean(fiat, MONEROOCEAN_WALLETS);
-    const xmr_price = prices.monero[fiat];
-
-    const xmr_fiat = xmr * xmr_price;
-    total += xmr_fiat;
-
-    console.log(`You have mined ${xmr} XMR (${xmr_fiat.toFixed(2)} ${fiat})`);
-  }
-
-  console.log(`In total, you have: ${total.toFixed(2)} ${fiat}`);
-}
-
-(async () => {
-  calculateInterestedCoinPrices(FIAT);
-  calculatePortfolio(FIAT);
-})();
+main();
