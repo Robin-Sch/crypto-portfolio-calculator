@@ -11,7 +11,7 @@ const COINS = [{ title: 'Bitcoin', value: 'btc' },
 const { calculateTotalMoneroocean } = require('./extra/moneroocean.js');
 const { calculateInterestedCoinPrices, calculatePortfolio } = require('./utils/calculate.js');
 const db = require('./utils/database.js');
-const { INTERESTING_COINS, addWalletToDatabase, removeWalletFromDatabase } = require('./utils/wallets.js');
+const { INTERESTING_COINS, addWalletToDatabase, loadWalletsFromEnv, removeWalletFromDatabase } = require('./utils/wallets.js');
 
 const main = async (output) => {
     if (output) console.log('\n' + output + '\n');
@@ -23,6 +23,7 @@ const main = async (output) => {
         choices: [
             { title: 'Calculate my portfolio', value: 'calculatePortfolio' },
             { title: 'View interested coin prices', value: 'calculateInterestedCoinPrices' },
+            { title: 'Load wallets from the .env file', value: 'loadWalletsFromEnv' },
             { title: 'Add a new wallet', value: 'addWalletToDatabase' },
             { title: 'Remove a wallet', value: 'removeWalletFromDatabase' },
             { title: 'Exit', value: 'exit' }
@@ -63,6 +64,9 @@ const main = async (output) => {
                 return main(msg);
             }
         }
+    } else if (response.choice === 'loadWalletsFromEnv') {
+        loadWalletsFromEnv();
+        return main('All wallets have been added!');
     } else if (response.choice === 'addWalletToDatabase') {
         const response2 = await prompts({
             type: 'select',
@@ -153,7 +157,7 @@ const main = async (output) => {
     } else if (response.choice === 'exit') {
         return process.exit();
     } else {
-        return main('You selectd an invalid option!');
+        return main(`You selected an invalid option! (${response.choice})`);
     }
 }
 

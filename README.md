@@ -12,9 +12,16 @@ Install [nodejs](https://nodejs.org/en/download/).
 
 Rename `.env.example` to `.env`, and fill in the secrets.
 
+Change `FIAT` to something like `usd`, `eur`, `gbp` etc. to change the currency.
+
 Use `INTERESTING_COINS` to change the coins you want to get the current price of (coingecko id's).
 
-Change `FIAT` to something like `usd`, `eur`, `gbp` etc. to change the currency.
+If you want to load a lot of wallets easily and fast, you can use the `XXX_WALLETS` and then select the option `Load wallets from the .env file`. (Replace `XXX` with the code of the currency, for example: `BTC`, `ETH` or `BNB`). Also notice the difference between "normal" coins and Monero (XMR).
+```
+XXX_WALLETS=["address1","address2"]
+XMR_WALLETS=[{"wallet":"address1","amount":0},{"wallet":"address2","amount":0}]
+```
+You can always add more/remove wallets by editing the array.
 
 You can leave out `ETH_API_KEY` and `BNB_API_KEY`. If you hit rate limits, use [etherscan](https://etherscan.io/) and [bscscan](https://bscscan.com/) to get the key(s).
 
