@@ -1,6 +1,6 @@
 const db = require('../utils/database.js');
 
-const calculateTotalXMR = (async (fiat, wallets) => {
+const calculateTotalXMR = (async (wallets) => {
     if (wallets.length === 0) return 0;
 
     const rows = db.prepare(`SELECT amount FROM xmr WHERE wallet IN (${wallets.map(() => '?').join(',')})`).all(wallets);

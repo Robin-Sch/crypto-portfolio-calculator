@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 const BNB_API = 'https://api.bscscan.com/api';
 const BNB_API_KEY = process.env.BNB_API_KEY;
 
-const calculateTotalBNB = (async (fiat, wallets) => {
+const calculateTotalBNB = (async (wallets) => {
     if (wallets.length === 0) return 0;
 
     const amount_data = await fetch(`${BNB_API}/?module=account&action=balancemulti&address=${wallets}&tag=latest&apikey=${BNB_API_KEY}`);

@@ -2,8 +2,8 @@ const fetch = require('node-fetch');
 const CG_API = 'https://api.coingecko.com/api/v3';
 
 const db = require('./database.js');
-const { MONEROOCEAN_WALLETS, INTERESTING_COINS } = require('./wallets.js');
-const { calculateTotalBTC, calculateTotalETH, calculateTotalBNB, calculateTotalXMR, calculateTotalMoneroocean } = require('../currencies/all.js');
+const { INTERESTING_COINS } = require('./wallets.js');
+const { calculateTotalBTC, calculateTotalETH, calculateTotalBNB, calculateTotalXMR, calculateTotalMoneroocean, calculateTotalPancakeswap } = require('../currencies/all.js');
 
 const fetchPrice = (async (id, fiat) => {
     const price_data = await fetch(`${CG_API}/simple/price?ids=${id}&vs_currencies=${fiat}`);
@@ -20,13 +20,13 @@ const calculateInterestedCoinPrices = async (fiat) => {
 }
 
 const calculatePortfolio = async (fiat) => {
-    const prices = await fetchPrice(['bitcoin', 'ethereum', 'binancecoin', 'monero'], fiat);
+    const prices = await fetchPrice(['bitcoin', 'ethereum', 'binancecoin', 'monero', 'pancakeswap-token'], fiat);
 
     const result = [];
 
     const BTC_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['btc']).map(w => w.wallet);
     if (BTC_WALLETS.length > 0) {
-        const btc = await calculateTotalBTC(fiat, BTC_WALLETS);
+        const btc = await calculateTotalBTC(BTC_WALLETS);
         const btc_price = prices.bitcoin[fiat];
 
         const btc_fiat = btc * btc_price;
@@ -36,7 +36,7 @@ const calculatePortfolio = async (fiat) => {
 
     const ETH_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['eth']).map(w => w.wallet);
     if (ETH_WALLETS.length > 0) {
-        const eth = await calculateTotalETH(fiat, ETH_WALLETS);
+        const eth = await calculateTotalETH(ETH_WALLETS);
         const eth_price = prices.ethereum[fiat];
 
         const eth_fiat = eth * eth_price;
@@ -46,7 +46,7 @@ const calculatePortfolio = async (fiat) => {
 
     const BNB_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['bnb']).map(w => w.wallet);
     if (BNB_WALLETS.length > 0) {
-        const bnb = await calculateTotalBNB(fiat, BNB_WALLETS);
+        const bnb = await calculateTotalBNB(BNB_WALLETS);
         const bnb_price = prices.binancecoin[fiat];
 
         const bnb_fiat = bnb * bnb_price;
@@ -56,17 +56,27 @@ const calculatePortfolio = async (fiat) => {
 
     const XMR_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['xmr']).map(w => w.wallet);
     if (XMR_WALLETS.length > 0) {
-    	const xmr = await calculateTotalXMR(fiat, XMR_WALLETS);
+    	const xmr = await calculateTotalXMR(XMR_WALLETS);
     	const xmr_price = prices.monero[fiat];
     	
     	const xmr_fiat = xmr * xmr_price;
     	
     	result.push({ coin: 'xmr', amount: xmr, amount_fiat: xmr_fiat });
     }
+    
+	const PANCAKESWAP_WALLETS = db.prepare('SELECT wallet FROM specialWallets WHERE coin = ?').all(['cake_pcs']).map(w => w.wallet);
+	if (PANCAKESWAP_WALLETS.length > 0) {
+        const cake = await calculateTotalPancakeswap(PANCAKESWAP_WALLETS);
+        const cake_price = prices['pancakeswap-token'][fiat];
 
-    const MONEROOCEAN_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['xmr_mo']).map(w => w.wallet);
+        const cake_fiat = cake * cake_price;
+
+        result.push({ coin: 'cake', extra: 'staked', amount: cake, amount_fiat: cake_fiat });
+    }
+
+    const MONEROOCEAN_WALLETS = db.prepare('SELECT wallet FROM specialWallets WHERE coin = ?').all(['xmr_mo']).map(w => w.wallet);
     if (MONEROOCEAN_WALLETS.length > 0) {
-        const xmr = await calculateTotalMoneroocean(fiat, MONEROOCEAN_WALLETS);
+        const xmr = await calculateTotalMoneroocean(MONEROOCEAN_WALLETS);
         const xmr_price = prices.monero[fiat];
 
         const xmr_fiat = xmr * xmr_price;

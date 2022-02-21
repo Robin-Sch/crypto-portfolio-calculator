@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 const ETH_API = 'https://api.etherscan.io/api';
 const ETH_API_KEY = process.env.ETH_API_KEY;
 
-const calculateTotalETH = (async (fiat, wallets) => {
+const calculateTotalETH = (async (wallets) => {
     if (wallets.length === 0) return 0;
 
     const amount_data = await fetch(`${ETH_API}/?module=account&action=balancemulti&address=${wallets}&tag=latest&apikey=${ETH_API_KEY}`);

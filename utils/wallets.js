@@ -1,13 +1,15 @@
-const MONEROOCEAN_WALLETS = JSON.parse(process.env.MONEROOCEAN_WALLETS) || [];
 const INTERESTING_COINS = JSON.parse(process.env.INTERESTING_COINS) || [];
+const SPECIAL_WALLETS = ['cake_pcs', 'xmr_mo'];
 
 const db = require('./database.js');
 
 const addWalletToDatabase = (async (wallet, coin) => {
-    const current = db.prepare('SELECT * FROM wallets WHERE wallet = ? AND coin = ?').get([wallet, coin]);
+    const table = SPECIAL_WALLETS.includes(coin) ? 'specialWallets' : 'wallets';
+
+    const current = db.prepare(`SELECT * FROM ${table} WHERE wallet = ? AND coin = ?`).get([wallet, coin]);
     
     if (!current) {
-        db.prepare('INSERT INTO wallets (wallet, coin) VALUES (?,?)').run([wallet, coin]);
+        db.prepare(`INSERT INTO ${table} (wallet, coin) VALUES (?,?)`).run([wallet, coin]);
     }
 });
 
@@ -41,7 +43,14 @@ const loadWalletsFromEnv = (async () => {
 
         db.prepare('INSERT INTO xmr (wallet, amount) VALUES (?,?)').run([wallet, amount]);
     }
+    
+	const PANCAKESWAP_WALLETS = JSON.parse(process.env.PANCAKESWAP_WALLETS) || [];
+    for (let e = 0; e < PANCAKESWAP_WALLETS.length; e++) {
+        const wallet = PANCAKESWAP_WALLETS[e];
+        addWalletToDatabase(wallet, 'cake_pcs');
+    }
 
+	const MONEROOCEAN_WALLETS = JSON.parse(process.env.MONEROOCEAN_WALLETS) || [];
     for (let e = 0; e < MONEROOCEAN_WALLETS.length; e++) {
         const wallet = MONEROOCEAN_WALLETS[e];
         addWalletToDatabase(wallet, 'xmr_mo');
@@ -51,7 +60,8 @@ const loadWalletsFromEnv = (async () => {
 const removeWalletFromDatabase = (async (wallet, coin) => {
     if (coin === 'xmr') db.prepare('DELETE FROM xmr WHERE wallet = ?').run([wallet]);
 
-    return db.prepare('DELETE FROM wallets WHERE wallet = ? AND coin = ?').run([wallet, coin]);
+    const table = SPECIAL_WALLETS.includes(coin) ? 'specialWallets' : 'wallets';
+    return db.prepare(`DELETE FROM ${table} WHERE wallet = ? AND coin = ?`).run([wallet, coin]);
 });
 
-module.exports = { MONEROOCEAN_WALLETS, INTERESTING_COINS, addWalletToDatabase, loadWalletsFromEnv, removeWalletFromDatabase };
+module.exports = { INTERESTING_COINS, addWalletToDatabase, loadWalletsFromEnv, removeWalletFromDatabase };

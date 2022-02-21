@@ -5,10 +5,10 @@ const FIAT = process.env.FIAT || 'usd';
 const COINS = [{ title: 'Bitcoin', value: 'btc' },
     { title: 'Ethereum', value: 'eth' },
     { title: 'Binance Coin', value: 'bnb' },
-    { title: 'Monero', value: 'xmr'},
-    { title: 'Moneroocean', value: 'xmr_mo' }];
+    { title: 'Monero', value: 'xmr' },
+    { title: 'Pancakeswap (CAKE)', value: 'cake_pcs' },
+    { title: 'Moneroocean (XMR)', value: 'xmr_mo' }];
 
-const { calculateTotalMoneroocean } = require('./extra/moneroocean.js');
 const { calculateInterestedCoinPrices, calculatePortfolio } = require('./utils/calculate.js');
 const db = require('./utils/database.js');
 const { INTERESTING_COINS, addWalletToDatabase, loadWalletsFromEnv, removeWalletFromDatabase } = require('./utils/wallets.js');
@@ -84,7 +84,6 @@ const main = async (output) => {
         });
 
         const wallet = response3.wallet;
-        let amount = null;
 
         if (coin === 'xmr') {
             const old = db.prepare('SELECT amount FROM xmr WHERE wallet = ?').get([wallet]);
@@ -92,19 +91,23 @@ const main = async (output) => {
             const response4 = await prompts({
                 type: 'number',
                 name: 'amount',
-                message: `What is the amount of Monero in this wallet? (previously: ${old || 0})`,
+                message: `What is the amount of Monero in this wallet? (previously: ${old?.amount || 0})`,
                 float: true
             });
 
-            amount = response4.amount;
+            const amount = response4.amount;
             if (amount === '' || !amount) return main('Invalid amount, please try again!');
+
+            await addWalletToDatabase(wallet, coin);
+
+            if (!old) db.prepare('INSERT INTO xmr (wallet, amount) VALUES (?,?)').run([wallet, amount]);
+            else db.prepare('UPDATE xmr SET amount = ? WHERE wallet = ?').run([amount, wallet]);
+
+            return main('Wallet has been added!');
+        } else {
+            await addWalletToDatabase(wallet, coin);
+            return main('Wallet has been added!');
         }
-
-
-        await addWalletToDatabase(wallet, coin);
-        if (coin === 'xmr' && amount) db.prepare('INSERT INTO xmr (wallet, amount) VALUES (?,?)').run([wallet, amount]);
-
-        return main('Wallet has been added!');
     } else if (response.choice === 'removeWalletFromDatabase') {
         const existingCoins = db.prepare('SELECT DISTINCT coin AS value FROM wallets').all();
         existingCoins.map(coin => {

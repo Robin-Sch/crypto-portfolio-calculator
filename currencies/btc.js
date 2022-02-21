@@ -2,7 +2,7 @@ const fetch = require('node-fetch');
 
 const BTC_API = 'https://blockchain.info';
 
-const calculateTotalBTC = (async (fiat, wallets) => {
+const calculateTotalBTC = (async (wallets) => {
     if (wallets.length === 0) return 0;
 
     const amount_data = await fetch(`${BTC_API}/balance?active=${wallets}`);
