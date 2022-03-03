@@ -1,6 +1,14 @@
 const fetch = require('node-fetch');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
+const colors = {
+    'bitcoin': 'yellow',
+    'ethereum': 'purple',
+    'binancecoin': 'green',
+    'monero': 'red',
+    'pancakeswap-token': 'blue'
+}
+
 const CG_API = 'https://api.coingecko.com/api/v3';
 
 const db = require('./database.js');
@@ -33,7 +41,7 @@ const calculatePortfolio = async (fiat) => {
 
         const btc_fiat = btc * btc_price;
 
-        result.push({ coin: 'btc', amount: btc, amount_fiat: btc_fiat });
+        result.push({ coin: 'bitcoin', amount: btc, amount_fiat: btc_fiat });
     }
 
     const ETH_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['eth']).map(w => w.wallet);
@@ -43,7 +51,7 @@ const calculatePortfolio = async (fiat) => {
 
         const eth_fiat = eth * eth_price;
 
-        result.push({ coin: 'eth', amount: eth, amount_fiat: eth_fiat });
+        result.push({ coin: 'ethereum', amount: eth, amount_fiat: eth_fiat });
     }
 
     const BNB_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['bnb']).map(w => w.wallet);
@@ -53,7 +61,7 @@ const calculatePortfolio = async (fiat) => {
 
         const bnb_fiat = bnb * bnb_price;
 
-        result.push({ coin: 'bnb', amount: bnb, amount_fiat: bnb_fiat });
+        result.push({ coin: 'binancecoin', amount: bnb, amount_fiat: bnb_fiat });
     }
 
     const XMR_WALLETS = db.prepare('SELECT wallet FROM wallets WHERE coin = ?').all(['xmr']).map(w => w.wallet);
@@ -63,7 +71,7 @@ const calculatePortfolio = async (fiat) => {
     	
     	const xmr_fiat = xmr * xmr_price;
     	
-    	result.push({ coin: 'xmr', amount: xmr, amount_fiat: xmr_fiat });
+    	result.push({ coin: 'monero', amount: xmr, amount_fiat: xmr_fiat });
     }
     
 	const PANCAKESWAP_WALLETS = db.prepare('SELECT wallet FROM specialWallets WHERE coin = ?').all(['cake_pcs']).map(w => w.wallet);
@@ -73,7 +81,7 @@ const calculatePortfolio = async (fiat) => {
 
         const cake_fiat = cake * cake_price;
 
-        result.push({ coin: 'cake', extra: 'staked', amount: cake, amount_fiat: cake_fiat });
+        result.push({ coin: 'pancakeswap-token', extra: 'staked', amount: cake, amount_fiat: cake_fiat });
     }
 
     const MONEROOCEAN_WALLETS = db.prepare('SELECT wallet FROM specialWallets WHERE coin = ?').all(['xmr_mo']).map(w => w.wallet);
@@ -83,13 +91,13 @@ const calculatePortfolio = async (fiat) => {
 
         const xmr_fiat = xmr * xmr_price;
 
-        result.push({ coin: 'xmr', extra: 'mined', amount: xmr, amount_fiat: xmr_fiat });
+        result.push({ coin: 'monero', extra: 'mined', amount: xmr, amount_fiat: xmr_fiat });
     }
 
     return result;
 }
 
-const getCoinPriceChart = async (id, fiat, days) => {
+const getCoinPriceChartData = async (id, fiat, days) => {
     const market_data = await fetch(`${CG_API}/coins/${id}/market_chart?vs_currency=${fiat}&days=${days}`);
     const market_json = await market_data.json();
     const history_json = market_json.prices;
@@ -107,29 +115,85 @@ const getCoinPriceChart = async (id, fiat, days) => {
         points.push(current[1]);
 
         if (i === history_json.length - 1) {
+            return { labels, points };
+        }
+    }
+}
+
+const getCoinPriceChart = async (id, fiat, days) => {
+    const { labels, points } = await getCoinPriceChartData(id, fiat, days);
+    const color = colors[id];
+
+    const width = 1080;
+    const height = 1080;
+    const backgroundColour = 'black';
+    const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour});
+
+    const config = {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: `${id} price in the last ${days} days`,
+                data: points,
+                fill: true,
+                borderColor: color,
+                backgroundColor: color
+            }]
+        }
+    }
+
+    const image = await chartJSNodeCanvas.renderToBuffer(config);
+    return image;
+}
+
+const getPortfolioChart = async (fiat, days) => {
+    const coins = (await calculatePortfolio(fiat)).sort(x => x.amount_fiat);
+
+    let labels = [];
+    const datasets = [];
+
+    for (let i = 0; i < coins.length; i++) {
+        const coinData = coins[i];
+        const coin = coinData.coin;
+        let { labels: currentLabels, points } = await getCoinPriceChartData(coin, fiat, days);
+
+        labels = currentLabels;
+        const color = colors[coin];
+
+        datasets.push({
+            label: coin,
+            data: points,
+            fill: true,
+            borderColor: color,
+            backgroundColor: color,
+        });
+
+        if (i === coins.length - 1) {
             const width = 1080;
             const height = 1080;
             const backgroundColour = 'black';
             const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour});
-
+        
             const config = {
                 type: 'line',
                 data: {
                     labels,
-                    datasets: [{
-                        label: `${id} price in the last ${days} days`,
-                        data: points,
-                        fill: true,
-                        borderColor: 'rgb(255,255,255)',
-                        tension: 0.1
-                    }]
-                }
+                    datasets,
+                },
+                options: {
+                    scales: {
+                        y: {
+                            stacked: true,
+                        }
+                    }
+                  }
             }
-
+        
             const image = await chartJSNodeCanvas.renderToBuffer(config);
             return image;
         }
     }
 }
 
-module.exports = { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart };
+module.exports = { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart, getPortfolioChart };

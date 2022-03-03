@@ -1,6 +1,7 @@
 require('dotenv').config();
 const prompts = require('prompts');
 const terminalImage = require('terminal-image');
+const { writeFileSync } = require('node:fs');
 
 const FIAT = process.env.FIAT || 'usd';
 const COINS = [{ title: 'Bitcoin', value: 'btc' },
@@ -17,7 +18,7 @@ const CG_COINS = [{ title: 'Bitcoin', value: 'bitcoin'},
     { title: 'Cake', value: 'pancakeswap-token'}
 ];
 
-const { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart } = require('./utils/calculate.js');
+const { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart, getPortfolioChart } = require('./utils/calculate.js');
 const db = require('./utils/database.js');
 const { INTERESTING_COINS, addWalletToDatabase, loadWalletsFromEnv, removeWalletFromDatabase } = require('./utils/wallets.js');
 
@@ -29,9 +30,10 @@ const main = async (output) => {
         name: 'choice',
         message: 'What do you want to do?',
         choices: [
-            { title: 'Calculate my portfolio', value: 'calculatePortfolio' },
+            { title: 'View my portfolio', value: 'calculatePortfolio' },
+            { title: 'View my portfolio chart', value: 'getPortfolioChart' },
             { title: 'View interested coin prices', value: 'calculateInterestedCoinPrices' },
-            { title: 'View coin price chart', value: 'getCoinPriceChart', },
+            { title: 'View interested coin price chart', value: 'getCoinPriceChart', },
             { title: 'Load wallets from the .env file', value: 'loadWalletsFromEnv' },
             { title: 'Add a new wallet', value: 'addWalletToDatabase' },
             { title: 'Remove a wallet', value: 'removeWalletFromDatabase' },
@@ -59,6 +61,27 @@ const main = async (output) => {
                 return main(msg)
             }
         }
+    } else if (response.choice === 'getPortfolioChart') {
+        const response2 = await prompts([
+            {
+                type: 'number',
+                name: 'days',
+                message: 'For how many days do you want the portfolio chart?'
+            },
+            {
+                type: 'text',
+                name: 'filename',
+                message: 'Please enter the file name to save the image to'
+            }
+        ]);
+        const days = response2.days;
+        const filename = response2.filename;
+
+        const chart = await getPortfolioChart(FIAT, days);
+        writeFileSync(`./${filename}.png`, chart);
+
+        const text = await terminalImage.buffer(chart);
+        return main(text);
     } else if (response.choice === 'calculateInterestedCoinPrices') {
         const prices = await calculateInterestedCoinPrices(FIAT);
 
@@ -75,24 +98,31 @@ const main = async (output) => {
         }
     } else if (response.choice === 'getCoinPriceChart') {
         const response2 = await prompts([
-        {
-            type: 'select',
-            name: 'coin',
-            message: 'For which coin is the wallet?',
-            choices: CG_COINS,
-        },
-        {
-            type: 'number',
-            name: 'days',
-            message: 'For how many days do you want the price chart?'
-        }
+            {
+                type: 'select',
+                name: 'coin',
+                message: 'For which coin is the wallet?',
+                choices: CG_COINS,
+            },
+            {
+                type: 'number',
+                name: 'days',
+                message: 'For how many days do you want the price chart?'
+            },
+            {
+                type: 'text',
+                name: 'filename',
+                message: 'Please enter the file name to save the image to'
+            }
         ]);
 
         const coin = response2.coin;
         const days = response2.days;
-
+        const filename = response2.filename;
 
         const chart = await getCoinPriceChart(coin, FIAT, days);
+        writeFileSync(`./${filename}.png`, chart);
+
         const text = await terminalImage.buffer(chart);
         return main(text);
     } else if (response.choice === 'loadWalletsFromEnv') {
