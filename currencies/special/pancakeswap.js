@@ -1,3 +1,5 @@
+//  https://gist.github.com/numtel/ce52b7d07cc62412eb5207b29f119d3b
+
 const https = require('https');
 
 function post(hostname, data, path) {

@@ -1,5 +1,6 @@
 require('dotenv').config();
 const prompts = require('prompts');
+const terminalImage = require('terminal-image');
 
 const FIAT = process.env.FIAT || 'usd';
 const COINS = [{ title: 'Bitcoin', value: 'btc' },
@@ -9,7 +10,14 @@ const COINS = [{ title: 'Bitcoin', value: 'btc' },
     { title: 'Pancakeswap (CAKE)', value: 'cake_pcs' },
     { title: 'Moneroocean (XMR)', value: 'xmr_mo' }];
 
-const { calculateInterestedCoinPrices, calculatePortfolio } = require('./utils/calculate.js');
+const CG_COINS = [{ title: 'Bitcoin', value: 'bitcoin'},
+    { title: 'Ethereum', value: 'ethereum'},
+    { title: 'Binance Coin', value: 'binancecoin'},
+    { title: 'Monero', value: 'monero'},
+    { title: 'Cake', value: 'pancakeswap-token'}
+];
+
+const { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart } = require('./utils/calculate.js');
 const db = require('./utils/database.js');
 const { INTERESTING_COINS, addWalletToDatabase, loadWalletsFromEnv, removeWalletFromDatabase } = require('./utils/wallets.js');
 
@@ -23,6 +31,7 @@ const main = async (output) => {
         choices: [
             { title: 'Calculate my portfolio', value: 'calculatePortfolio' },
             { title: 'View interested coin prices', value: 'calculateInterestedCoinPrices' },
+            { title: 'View coin price chart', value: 'getCoinPriceChart', },
             { title: 'Load wallets from the .env file', value: 'loadWalletsFromEnv' },
             { title: 'Add a new wallet', value: 'addWalletToDatabase' },
             { title: 'Remove a wallet', value: 'removeWalletFromDatabase' },
@@ -64,6 +73,28 @@ const main = async (output) => {
                 return main(msg);
             }
         }
+    } else if (response.choice === 'getCoinPriceChart') {
+        const response2 = await prompts([
+        {
+            type: 'select',
+            name: 'coin',
+            message: 'For which coin is the wallet?',
+            choices: CG_COINS,
+        },
+        {
+            type: 'number',
+            name: 'days',
+            message: 'For how many days do you want the price chart?'
+        }
+        ]);
+
+        const coin = response2.coin;
+        const days = response2.days;
+
+
+        const chart = await getCoinPriceChart(coin, FIAT, days);
+        const text = await terminalImage.buffer(chart);
+        return main(text);
     } else if (response.choice === 'loadWalletsFromEnv') {
         loadWalletsFromEnv();
         return main('All wallets have been added!');

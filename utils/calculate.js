@@ -1,4 +1,6 @@
 const fetch = require('node-fetch');
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+
 const CG_API = 'https://api.coingecko.com/api/v3';
 
 const db = require('./database.js');
@@ -87,4 +89,47 @@ const calculatePortfolio = async (fiat) => {
     return result;
 }
 
-module.exports = { calculateInterestedCoinPrices, calculatePortfolio };
+const getCoinPriceChart = async (id, fiat, days) => {
+    const market_data = await fetch(`${CG_API}/coins/${id}/market_chart?vs_currency=${fiat}&days=${days}`);
+    const market_json = await market_data.json();
+    const history_json = market_json.prices;
+
+    const labels = [];
+    const points = [];
+
+    for (let i = 0; i < history_json.length; i++){
+        const current = history_json[i];
+
+        const date = new Date(current[0]);
+        const label = days > 7 ? `${date.getDate()}/${date.getMonth()+1}` : `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes()}`;
+        labels.push(label);
+
+        points.push(current[1]);
+
+        if (i === history_json.length - 1) {
+            const width = 1080;
+            const height = 1080;
+            const backgroundColour = 'black';
+            const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour});
+
+            const config = {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: `${id} price in the last ${days} days`,
+                        data: points,
+                        fill: true,
+                        borderColor: 'rgb(255,255,255)',
+                        tension: 0.1
+                    }]
+                }
+            }
+
+            const image = await chartJSNodeCanvas.renderToBuffer(config);
+            return image;
+        }
+    }
+}
+
+module.exports = { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart };

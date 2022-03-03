@@ -10,9 +10,11 @@
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^7.5.0",
+    "chartjs-node-canvas": "^4.1.6",
     "dotenv": "^16.0.0",
     "https": "^1.0.0",
     "node-fetch": "^2.6.7",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "terminal-image": "^1.2.1"
   }
 }
