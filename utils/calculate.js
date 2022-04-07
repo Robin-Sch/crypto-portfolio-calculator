@@ -7,7 +7,25 @@ const colors = {
     'binancecoin': 'green',
     'monero': 'red',
     'pancakeswap-token': 'blue'
+};
+
+const shortToLongJSON = {
+    'btc': 'bitcoin',
+    'eth': 'etherium',
+    'bnb': 'binancecoin',
+    'xmr': 'monero',
+    'cake': 'pancakeswap-token'
 }
+
+const shortToLong = (coin) => {
+    if (Object.keys(shortToLongJSON).includes(coin)) {
+        return shortToLongJSON[coin]
+    } else if (Object.values(shortToLongJSON).includes(coin)) {
+        return coin;
+    } else {
+        return null;
+    }
+};
 
 const CG_API = 'https://api.coingecko.com/api/v3';
 
@@ -98,6 +116,9 @@ const calculatePortfolio = async (fiat) => {
 }
 
 const getCoinPriceChartData = async (id, fiat, days) => {
+    id = shortToLong(id);
+    if (!id) return { labels: [], points: [] };
+
     const market_data = await fetch(`${CG_API}/coins/${id}/market_chart?vs_currency=${fiat}&days=${days}`);
     const market_json = await market_data.json();
     const history_json = market_json.prices;
@@ -121,6 +142,9 @@ const getCoinPriceChartData = async (id, fiat, days) => {
 }
 
 const getCoinPriceChart = async (id, fiat, days) => {
+    id = shortToLong(id);
+    if (!id) return 'Invalid coin name';
+
     const { labels, points } = await getCoinPriceChartData(id, fiat, days);
     const color = colors[id];
 

@@ -29,7 +29,7 @@ Run `npm i` to install the dependencies.
 
 ## Usage
 
-Run `npm start` to start.
+Run `npm run cli` to start the cli version, and run `npm start` to run the web version.
 
 When running for the first time, you need to add your Bitcoin, Ethereum, Binance coin and/or Monero wallet(s).
 
