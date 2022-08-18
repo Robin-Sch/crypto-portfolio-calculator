@@ -32,6 +32,7 @@ const CG_API = 'https://api.coingecko.com/api/v3';
 const db = require('./database.js');
 const { INTERESTING_COINS } = require('./wallets.js');
 const { calculateTotalBTC, calculateTotalETH, calculateTotalBNB, calculateTotalXMR, calculateTotalMoneroocean, calculateTotalPancakeswap } = require('../currencies/all.js');
+const { date } = require('prompts/dist/prompts');
 
 const fetchPrice = (async (id, fiat) => {
     const price_data = await fetch(`${CG_API}/simple/price?ids=${id}&vs_currencies=${fiat}`);
@@ -130,7 +131,7 @@ const getCoinPriceChartData = async (id, fiat, days) => {
         const current = history_json[i];
 
         const date = new Date(current[0]);
-        const label = days > 7 ? `${date.getDate()}/${date.getMonth()+1}` : `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes()}`;
+        const label = days > 7 ? `${date.getDate()}/${date.getMonth()+1}` : `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes()}`;
         labels.push(label);
 
         points.push(current[1]);
@@ -172,21 +173,22 @@ const getCoinPriceChart = async (id, fiat, days) => {
 }
 
 const getPortfolioChart = async (fiat, days) => {
-    const coins = (await calculatePortfolio(fiat)).sort(x => x.amount_fiat);
+    const coins = (await calculatePortfolio(fiat)).sort((a, b) => a.amount_fiat > b.amount_fiat ? -1 : (a.amount_fiat < b.amount_fiat) ? 1 : 0);
 
     let labels = [];
-    const datasets = [];
+    let datasets = [];
 
     for (let i = 0; i < coins.length; i++) {
-        const coinData = coins[i];
-        const coin = coinData.coin;
+        const { amount, coin, extra } = coins[i];
         let { labels: currentLabels, points } = await getCoinPriceChartData(coin, fiat, days);
+
+        points = points.map(point => point *= amount);
 
         labels = currentLabels;
         const color = colors[coin];
 
         datasets.push({
-            label: coin,
+            label: `${coin}${extra ? ` (${extra})` : ''}`,
             data: points,
             fill: true,
             borderColor: color,

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Crypto Portfolio</title>
+    <style>
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        td, th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        img {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <table id="coins">
+        <tr>
+            <th>Coin</th>
+            <th>Amount</th>
+            <th>Amount USD</th>
+        </tr>
+    </table>
+
+    <input id="amount-of-days" type="number" placeholder="amount of days">
+    <button id="amount-of-days-button" onclick="createGraph()">Show graph</button>
+
+    <img id="portfolio-30">
+
+    <script>
+        fetch("/calculatePortfolio").then(res => res.json()).then(json => {
+            const coins = json.result;
+            let total = 0;
+
+            const table = document.getElementById("coins");
+
+            for(let i = 0; i < coins.length; i++) {
+                const { amount, coin, extra, amount_fiat } = coins[i];
+                total += amount_fiat;
+
+                const row = table.insertRow(-1);
+                row.insertCell(0).innerHTML = `${coin}${ extra ? ` (${extra})` : ''}`
+                row.insertCell(1).innerHTML = amount;
+                row.insertCell(2).innerHTML = amount_fiat.toFixed(2);
+
+                if (i === coins.length - 1) {
+                    const row = table.insertRow(-1);
+                    row.insertCell(0).innerHTML = 'total'
+                    row.insertCell(1).innerHTML = '';
+                    row.insertCell(2).innerHTML = total.toFixed(2);
+                }
+            }
+        });
+
+        const toBase64 = (arr) => {
+            return btoa(arr.reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        };
+        
+        const createGraph = () => {
+            document.getElementById("amount-of-days-button").disabled = true;
+            const days = document.getElementById("amount-of-days").value || 30;
+            return fetch(`/getPortfolioChart/${days}`).then(res => res.json()).then(json => {
+                document.getElementById("portfolio-30").src = `data:image/png;base64,${toBase64(json.result.data)}`;
+                return document.getElementById("amount-of-days-button").disabled = false;
+            });
+        };
+    </script>
+</body>
+</html>

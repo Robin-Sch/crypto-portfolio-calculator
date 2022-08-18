@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const app = express();
 
 const FIAT = process.env.FIAT || 'usd';
@@ -7,20 +8,23 @@ const PORT = process.env.PORT || 3000;
 
 const { calculateInterestedCoinPrices, calculatePortfolio, getCoinPriceChart, getPortfolioChart } = require('./utils/calculate.js');
 app.use(express.json());
+app.get("/", async (req, res) => {
+    return res.status(200).sendFile(path.join(__dirname, "index.html"));
+})
 app.get('/calculatePortfolio', async (req, res) => {
+    const coins = (await calculatePortfolio(FIAT)).sort((a, b) => a.amount_fiat > b.amount_fiat ? -1 : (a.amount_fiat < b.amount_fiat) ? 1 : 0);
+    if (coins.length === 0) return res.status(200).send({ result: '', error: 'You don\'t have added your wallet(s) yet' });
+
+    return res.status(200).json({ result: coins, error: '' });
+});
+app.get('/calculateTotalPortfolio', async (req, res) => {
     const coins = await calculatePortfolio(FIAT);
     if (coins.length === 0) return res.status(200).send({ result: '', error: 'You don\'t have added your wallet(s) yet' });
 
     let total_fiat = 0;
-    let msg = '';
 
     for(let i = 0; i < coins.length; i++) {
-        const current = coins[i];
-        const { amount, coin, extra, amount_fiat } = current;
-
-        total_fiat += current.amount_fiat;
-
-        msg += `You have ${extra ? extra + ' ' : ''}${amount} ${coin} (${amount_fiat.toFixed(2)} ${FIAT})\n`;
+        total_fiat += coins[i].amount_fiat;
 
         if (i === coins.length - 1) {
             return res.status(200).send({ result: total_fiat.toFixed(2), fiat: FIAT, error: null });
