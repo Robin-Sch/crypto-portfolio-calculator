@@ -27,6 +27,8 @@ You can leave out `ETH_API_KEY` and `BNB_API_KEY`. If you hit rate limits, use [
 
 Run `npm i` to install the dependencies.
 
+You also need node-canvas dependencies which can be found [here](https://github.com/Automattic/node-canvas/wiki#installation-guides)
+
 ## Usage
 
 Run `npm run cli` to start the cli version, and run `npm start` to run the web version.

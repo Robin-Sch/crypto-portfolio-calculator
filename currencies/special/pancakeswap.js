@@ -1,6 +1,8 @@
 //  https://gist.github.com/numtel/ce52b7d07cc62412eb5207b29f119d3b
 
 const https = require('https');
+// v1, v2
+const CONTRACTS = ["0xa80240Eb5d7E05d3F250cF000eEc0891d00b51CC", "0x45c54210128a065de780C4B0Df3d16664f7f859e"]
 
 function post(hostname, data, path) {
   const options = {
@@ -71,11 +73,10 @@ class BscRpc extends RpcCaller {
   }
 }
 
-
 class CakeVault extends BscRpc {
   constructor(acct, contract) {
     super();
-    this.contract = contract || '0xa80240eb5d7e05d3f250cf000eec0891d00b51cc';
+    this.contract = contract || '0x45c54210128a065de780C4B0Df3d16664f7f859e';
     this.acct = acct;
     this.shares = null;
     this.pricePerShare = null;
@@ -108,9 +109,16 @@ const calculateTotalPancakeswap = (async (wallets) => {
 });
 
 const calculatePancakeswap = (async (wallet) => {
-	const myCakeVault = new CakeVault(wallet);
-	const myCake = await myCakeVault.getBalance();
-	return myCake;
+  let amount = 0;
+
+	for (let i = 0; i < CONTRACTS.length; i++) {
+    const myCakeVault = new CakeVault(wallet, CONTRACTS[i]);
+    amount += await myCakeVault.getBalance();
+    
+    if (i == CONTRACTS.length - 1) {
+      return amount;
+    }
+  }
 });
 
 module.exports = { calculateTotalPancakeswap };

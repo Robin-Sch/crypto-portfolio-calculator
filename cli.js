@@ -71,7 +71,7 @@ const main = async (output) => {
             {
                 type: 'text',
                 name: 'filename',
-                message: 'Please enter the file name to save the image to'
+                message: 'Please enter the file name to save the image to (without extension)'
             }
         ]);
         const days = response2.days;
@@ -112,7 +112,7 @@ const main = async (output) => {
             {
                 type: 'text',
                 name: 'filename',
-                message: 'Please enter the file name to save the image to'
+                message: 'Please enter the file name to save the image to (without extension)'
             }
         ]);
 
